@@ -9,16 +9,6 @@ option(FLOW_COMPILE_EXAMPLES "Compile examples for flow" ON)
 
 include(GNUInstallDirs)
 
-add_library(flow
-    STATIC
-    include/flow/dispatch.hpp
-    include/flow/store.hpp
-    include/flow/subscriber.hpp
-    include/flow/lens.hpp
-    src/policy.cpp
-)
-target_include_directories(flow PRIVATE include)
-
 if(FLOW_COMPILE_EXAMPLES)
     add_subdirectory(examples)
 endif()

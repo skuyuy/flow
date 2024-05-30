@@ -48,9 +48,6 @@ namespace flow
 		using action_queue = std::queue<action_type>;
 		using subscribers = std::unordered_set<subscriber_type*>;
 
-		template<class UState, class UAction, class UReducer, class... TArgs>
-		friend auto make_store(TArgs&&... args) -> std::shared_ptr<store<UState, UAction, UReducer>>;
-
 		void notify_all_();
 
 		// members
@@ -171,7 +168,7 @@ namespace flow
 		return state_;
 	}
 
-	template<class UState, class UAction, class UReducer = reducer<UAction, UState>, class ...TArgs>
+	template<class UState, class UAction, class UReducer = reducer<UState, UAction>, class ...TArgs>
 		requires std::constructible_from<UState, TArgs...>
 	auto make_store(TArgs && ...args) -> std::shared_ptr<store<UState, UAction, UReducer>>
 	{

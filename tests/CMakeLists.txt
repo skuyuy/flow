@@ -3,4 +3,3 @@ add_executable(flow-tests
 )
 
 target_include_directories(flow-tests PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(flow-tests PRIVATE flow)
