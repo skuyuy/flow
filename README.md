@@ -61,31 +61,24 @@ auto store = flow::make_store<ns::my_model,
 auto store2 = flow::make_store<ns::my_model, 
                                ns::my_action,
                                ns::my_reducer>();
-// V3: create a store using a lambda
-// not recommended since this blows up your type definition, but nice for simple reducers
-auto store3 = flow::make_store<ns::my_model,
-                               ns::my_action>([](ns::my_model m, ns::my_action a) -> ns::my_model {
-                                   // ... do something
-                                   return m;
-                               });
 ```
 
 Use `store::dispatch(action a)` to apply a mutation to the state:
 
 ```cpp
-store.dispatch(my_action::action_1);
+store->dispatch(my_action::action_1);
 ```
 
 The state is an observable, so it will notify its subscribers about a state change. To subscribe to the store, use `store::subscribe` (conveniently, this returns the function to unsubscribe again, inspired by React Redux):
 
 ```cpp
-struct some_subscriber: public flow::change_listener<ns::my_state>
+struct some_subscriber: public flow::subscriber<ns::my_state>
 {
-    void on_change(const my_state &s) {}
+    void handle_change(const ns::my_state &s) {}
 };
 
 auto listener = some_subscriber{};
-auto unsubscribe =  store.subscribe(&listener);
+auto unsubscribe =  store->subscribe(&listener);
 
 // later...
 
@@ -97,11 +90,25 @@ unsubscribe();
 You can dispatch asynchronous actions by passing a tag struct into `dispatch()`:
 
 ```cpp
-store.dispatch(my_async_action{ .url = "..." }, flow::async_dispatch);
+store->dispatch(my_async_action{ .url = "..." }, flow::async_dispatch);
 ```
 
 This will enqueue the the action into an asynchronous queue which will be processed on dispatch. The store will notify its subscribers as usual once the action has been processed.
 
-### Selectors
+### Lenses
 
-TODO
+Lenses return a transformed value by evaluating a state change from a store. You can access the value by using `operator*` or `operator->`.
+
+```cpp
+auto lens = flow::lens<store<ns::my_model, ns::my_action>, int>(store, [](const ns::my_state &state) { /* return some transformation */ });
+
+// value access
+auto value = *lens;
+```
+
+Lenses perform the transformation function in two situations:
+
+- initial construction to initialize the internal value
+- every time the store notifies them
+
+To react to updates on a lens, use the `flow::relay_lens` type. It functions in the same way as `flow::lens` except that it also implements the observer pattern.
