@@ -92,6 +92,16 @@ auto unsubscribe =  store.subscribe(&listener);
 unsubscribe();
 ```
 
+#### Async dispatch
+
+You can dispatch asynchronous actions by passing a tag struct into `dispatch()`:
+
+```cpp
+store.dispatch(my_async_action{ .url = "..." }, flow::async_dispatch);
+```
+
+This will enqueue the the action into an asynchronous queue which will be processed on dispatch. The store will notify its subscribers as usual once the action has been processed.
+
 ### Selectors
 
 TODO

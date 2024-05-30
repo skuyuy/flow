@@ -1,0 +1,116 @@
+@startuml flow_library
+
+skinparam Linetype ortho
+
+title Unidirectional Data Flow
+
+namespace flow {
+  namespace detail {
+    interface reducer_concept<T, TState, TAction> <<concept>> {
+      std::default_initializable<T>
+      std::invocable<T, TState, TAction>
+      std::convertible_to<std::invoke_result_t<T, TState, TAction>, TState>
+    }
+
+    interface transformer_concept<T, TState, TValue> <<concept>> {
+      std::default_initializable<T>
+      std::invocable<T, TState>
+      std::convertible_to<std::invoke_result_t<T, TState>, TValue>
+    }
+  }
+
+  struct async_dispatch_tag <<tag>>
+
+  interface dispatch_context_interface<TAction> {
+    + {abstract} dispatch(action: TAction): void
+    + {abstract} dispatch(action: TAction, _: async_dispatch_tag): void
+  }
+
+  interface subscriber_interface<T> {
+    + {abstract} handle_change(value: T): void
+  }
+
+  class store<TState, TAction, TReducer: detail::reducer_concept<TState, TAction>> {
+    - action_q_: std::queue<TAction>
+    - action_q_mtx_: std::mutex
+    - thread_: std::jthread
+    - state_: TState
+    - state_mtx_: std::mutex
+    - dispatch_thread_(): void
+    + <<override>> dispatch(action: TAction): void
+    + <<override>> dispatch(action: TAction, _: async_dispatch_tag): void
+    + {static} make_store<TArgs...>(args: TArgs...) requires std::constructible_from<TState, TArgs...>: std::shared_ptr<store>
+  }
+
+  object store_id {
+    using store_id = unsigned
+  }
+
+  class selector<TStore, TValue, TTransformer: transformer_concept<TStore::state_type, TValue>> {
+    - store_: std::shared_ptr<TStore>
+    - transform_: TTransformer
+    - store_connection_: unsigned int
+    + selector(store: std::shared_ptr<TStore>)
+    + ~selector()
+  }
+
+  abstract class view<TDispatch: dispatch_context_interface<TDispatch::action_type>> {
+    - dispatch_context_: std::shared_ptr<TDispatch>
+    + view(context: std::shared_ptr<TDispatch>)
+    + dispatch_context(): std::shared_ptr<TDispatch>
+  }
+
+  class store_registry<TStore> {
+    - {static} listener_map_: std::unordered_map<store_id, subscriber_interface<TStore::state_type>*>
+    + {static} register_store(store: TStore): store_id
+    + {static} unregister_store(id: store_id): void
+    + {static} register_subscriber(subscriber: subscriber_interface<TStore::state_type>*): void
+    + {static} unsubscribe_subscriber(subscriber: subscriber_interface<TStore::state_type>*)
+  }
+
+  dispatch_context_interface "1" o- "1" view
+  dispatch_context_interface <|-- store: <<TAction>>
+  async_dispatch_tag ..> dispatch_context_interface: <<tag dispatch>>
+  selector .> store: <<subscribe>>
+  selector --|> subscriber_interface: <<TStore::state_type>>
+  store ..> store_registry: register self
+  subscriber_interface ..> store_registry: register to store
+}
+
+
+
+
+' note as Example
+
+' Example usage of a ""store""
+
+' <code>
+
+' static auto store = flow::store<MyState, MyAction, MyReducer>::create();
+
+' 
+
+' class MyView : public flow::view<decltype(*store)> {
+
+' }
+
+' 
+
+' MyView():
+
+'   view(store)
+
+' {
+
+'   auto lens = flow::selector<decltype(*store), MyTransformer>(store);
+
+' }
+
+' </code>
+
+' end note
+
+
+
+
+@enduml
