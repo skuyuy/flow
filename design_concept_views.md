@@ -95,48 +95,56 @@ struct counter_component
 
 In this case the UI lives in a different runtime and calls into types defined by us. We can:
 
-* expose a "service" of some sort to the runtime which under the hood dispatches actions to the store and emits events on store updates
+* expose a framework model class to the runtime which under the hood dispatches actions to the store and emits events on store updates
 
 ```cpp
-class counter_service: flow::subscriber<counter>
+// QML as an example
+class CounterModel: public QObject, public flow::subscriber<counter>
 {
-    // Framework boilerplate... either QML or GDNative
-    // Either can be registered as a singleton (the service is THE application state) or attached to the runtime sometime
+    Q_OBJECT
+    QML_ELEMENT
+
+    Q_PROPERTY(value READ value)
 public:
-    counter_service()
+    CounterModel()
     {
         store_->subscribe(this);
     }
 
-    ~counter_service()
+    ~CounterModel()
     {
         store_->unsubscribe(this);
     }
 
     // Public API: these functions will be exposed to the runtime (QObject / godot::Object)
-    void increment()
+    Q_INVOCABLE void increment()
     {
         store_->dispatch(counter_action::increment);
     }
 
-    void decrement()
+    Q_INVOCABLE void decrement()
     {
         store_->dispatch(counter_action::decrement);
     }
 
-    void reset()
+    Q_INVOCABLE void reset()
     {
         store_->dispatch(counter_action::reset);
+    }
+
+    auto value() const -> int
+    {
+        return store_->state().value;
     }
 
     // overrides
     void handle_change(const counter& counter) override
     {
-        // emit the state_changed signal
-        emit state_changed();
+        // emit the stateChanged signal
+        emit stateChanged();
     }
 signals: // or register Godot signals
-    void state_changed();
+    void stateChanged();
 private:
     std::shared_ptr<flow::store<counter, counter_action>> store_ = flow::make_store<counter, counter_action>();
 };
